@@ -1,5 +1,3 @@
-# Nicla Sense ME Web-BLE Demo Dashboard
+# Senscape project
 
-(c) 2022 Arduino SA
-License GPL
 
