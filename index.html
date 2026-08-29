@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Arduino Nicla Sense ME - SenSCAPE</title>
+
+    <link href='https://fonts.googleapis.com/css?family=Roboto Mono' rel='stylesheet'>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jaames/iro/dist/iro.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/109/three.min.js"></script>
+    <script src="GLTFLoader.js"></script>
+
+    <style>
+        * {
+            font-family: 'Roboto Mono', sans-serif;
+            box-sizing: border-box;
+        }
+
+        body {
+            color: white;
+            background: #000000;
+            font-size: 14px;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* --- SWIPE KONTÉNER STÍLUSAI --- */
+        .swipe-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            overflow-x: scroll;
+            overflow-y: hidden;
+            scroll-snap-type: x mandatory;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+            .swipe-container::-webkit-scrollbar {
+                display: none;
+            }
+
+        .page {
+            flex: 0 0 100vw;
+            width: 100vw;
+            height: 100vh;
+            scroll-snap-align: start;
+            overflow-y: auto;
+            padding-top: 20px;
+            padding-bottom: 60px;
+        }
+
+        .inner-container {
+            width: 1320px;
+            margin: 0 auto;
+        }
+
+        /* --- ELSŐ OLDAL FLEXBOX SORA --- */
+        .top-dashboard-row {
+            display: flex;
+            justify-content: space-between; 
+            align-items: flex-start; 
+            width: 100%;
+        }
+
+        /* --- LAPOZÓ PÖTTYÖK STÍLUSAI --- */
+        .swipe-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            background-color: #444;
+            border-radius: 50%;
+            transition: background-color 0.3s;
+            cursor: pointer;
+        }
+
+            .dot.active {
+                background-color: #d8f41d;
+            }
+
+        /* --- WIDGET STÍLUSOK --- */
+        #pairButton {
+            background-color: #d8f41d;
+            border: none;
+            color: black;
+            padding: 1px;
+            text-align: center;
+            text-decoration: none;
+            margin: 8px 18px;
+            height: 25px;
+            width: 100px;
+            border-radius: 20px;
+            outline: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .widget {
+            background-color: #222222;
+            border-radius: 0px;
+            padding: 10px;
+            margin: 5px;
+            float: left;
+            color: #DAE3E3;
+            padding-bottom: 16px;
+        }
+
+       
+        .side-widget {
+            width: 380px;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .square {
+            width: 500px;
+            height: 500px;
+        }
+
+        .double {
+            width: 420px; 
+            height: 255px;
+        }
+
+        a {
+            color: white;
+            font-weight: bold;
+        }
+
+        .status {
+            width: 1310px;
+            height: 60px;
+            color: white;
+            display: grid;
+            grid-template-columns: 15% 70% 15%;
+            margin-bottom: 15px;
+            margin-left: 5px;
+        }
+
+        #bluetooth {
+            font-size: 16px;
+            height: 50%;
+            margin: auto;
+        }
+
+        .statusBar {
+            height: 100%;
+            grid-column: 2;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .label {
+            height: 25px;
+            display: inline;
+            font-size: 20px;
+        }
+
+        .digit {
+            font-size: 20px;
+            color: #888888;
+            float: right;
+        }
+
+        .doublegraph {
+            width: 100%;
+            height: 200px;
+        }
+
+        .quaternion {
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        #canvasDigits {
+            width: 100%;
+            margin: auto;
+        }
+
+            #canvasDigits span {
+                width: 29%;
+                display: inline-block;
+            }
+
+        #color-picker-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* Gomb stílusa a kalibrációhoz */
+        .calib-btn {
+            display: block;
+            margin: auto;
+            cursor: pointer;
+            background: #d8f41d;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-weight: bold;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+            .calib-btn:hover {
+                background: #b5ce16;
+            }
+
+        #snackbar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            visibility: hidden;
+            text-align: center;
+            background-color: #374146;
+            border-radius: 3px;
+            padding: 8px 15px;
+            display: inline-block;
+        }
+
+            #snackbar.show {
+                visibility: visible;
+                animation: fadein 0.5s;
+            }
+
+        @keyframes fadein {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="snackbar"></div>
+
+    <!-- Oldal Kijelző Dots -->
+    <div class="swipe-indicator">
+        <span class="dot active" id="dot1"></span>
+        <span class="dot" id="dot2"></span>
+    </div>
+
+    <!-- Swipe Konténer -->
+    <div class="swipe-container" id="swiper">
+
+        <!-- 1. OLDAL -->
+        <div class="page">
+            <div class="inner-container">
+
+                <div class="status widget">
+                    <button id="pairButton">CONNECT</button>
+                    <div class="label statusBar" id="bluetooth">Swipe right for graphs &rarr;</div>
+                    <img src="Logo-Arduino-Pro-inline.svg" style="position: inherit;padding-right: 0px;filter: invert(100%);float: right; grid-column: 3; width: 80%; margin-top: 5.5%;" />
+                </div>
+
+                <!-- FLEXBOX SOR A 3 DOBOZNAK -->
+                <div class="top-dashboard-row">
+
+                    <!-- 1. BAL OLDAL: KALIBRÁCIÓ -->
+                    <div class="side-widget widget">
+                        <div class="label">&#128207; Calibration</div>
+
+                        <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px; text-align: justify; color: #aaaaaa; font-size: 14px; line-height: 1.6;">
+                            <p>Magyarázat / Leírás helye</p>
+                           
+
+                            <button id="reset3dButton" class="calib-btn" style="margin-top: 30px;">Set Zero Orientation</button>
+                        </div>
+                    </div>
+
+                    <!-- 2. KÖZÉP: 3D FORGATÁS -->
+                    <div class="square widget" id="3d">
+                        <div class="label" style="display: block; text-align: center;">&#128230; Quaternion Rotation</div>
+                        <!-- Itt jelenik meg a 3D modell -->
+                        <div class="quaternion" id="canvasDigits">
+                            <span id="xQuaternion">x: -</span>
+                            <span id="yQuaternion">y: -</span>
+                            <span id="zQuaternion">z: -</span>
+                        </div>
+                    </div>
+
+                    <!-- 3. JOBB OLDAL: RGB LED -->
+                    <div class="side-widget widget">
+                        <div class="label">&#128161; RGB LED control</div>
+                        <div id="color-picker-container"></div>
+                    </div>
+
+                </div> <!-- Flexbox sor vége -->
+
+            </div>
+        </div>
+
+        <!-- 2. OLDAL: A 6 darab Grafikon -->
+        <div class="page">
+            <div class="inner-container">
+
+                <div class="double widget">
+                    <div class="label">&#128640; Accelerometer</div>
+                    <div id="accelerometer" class="doublegraph"></div>
+                </div>
+
+                <div class="double widget">
+                    <div class="label">&#129517; Magnetometer</div>
+                    <div id="magnetometer" class="doublegraph"></div>
+                </div>
+
+                <div class="double widget">
+                    <div class="label">&#127777; Temperature - <span id="temperature-value" class="digit"></span><span class="digit">&deg;C&nbsp;</span></div>
+                    <div class="doublegraph" id="temperature"></div>
+                </div>
+
+                <div class="double widget">
+                    <div class="label">&#128167; Humidity - <span id="humidity-value" class="digit"></span><span class="digit">%&nbsp;</span></div>
+                    <div class="doublegraph" id="humidity"></div>
+                </div>
+
+                <div class="double widget">
+                    <div class="label">&#9925; Pressure - <span id="pressure-value" class="digit"></span><span class="digit">kPa&nbsp;</span></div>
+                    <div class="doublegraph" id="pressure"></div>
+                </div>
+
+                <div class="double widget">
+                    <div class="label">&#x1F4A8; Gas Value - <span id="gas-value" class="digit"></span></div>
+                    <div class="doublegraph" id="gas"></div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+<script type="text/javascript">
+
+    // --- LAPOZÁS FIGYELŐ Pöttyök frissítése ---
+    const swiper = document.getElementById('swiper');
+    const dot1 = document.getElementById('dot1');
+    const dot2 = document.getElementById('dot2');
+
+    swiper.addEventListener('scroll', () => {
+    if (swiper.scrollLeft < window.innerWidth / 2) {
+    dot1.classList.add('active');
+    dot2.classList.remove('active');
+    } else {
+    dot2.classList.add('active');
+    dot1.classList.remove('active');
+    }
+    });
+
+    // --- PÖTTYÖK KATTINTÁSA ---
+    dot1.addEventListener('click', () => {
+    swiper.scrollTo({ left: 0, behavior: 'smooth' });
+    });
+
+    dot2.addEventListener('click', () => {
+    swiper.scrollTo({ left: window.innerWidth, behavior: 'smooth' });
+    });
+
+    var maxRecords = 64;
+
+    var NiclaSenseME =
+    {
+    temperature: { uuid: '19b10000-2001-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Float32'], data: { temperature: [] } },
+    humidity: { uuid: '19b10000-3001-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Uint8'], data: { humidity: [] } },
+    pressure: { uuid: '19b10000-4001-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Float32'], data: { pressure: [] } },
+    accelerometer: { uuid: '19b10000-5001-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Float32', 'Float32', 'Float32'], data: { 'Ax': [], 'Ay': [], 'Az': [] } },
+    magnetometer: { uuid: '19b10000-6002-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Float32','Float32','Float32'], data: {'Mx':[], 'My':[], 'Mz':[]} },
+    led: { uuid: '19b10000-8001-537e-4f6c-d104768a1214', properties: ['BLEWrite'], structure: ['Uint8', 'Uint8', 'Uint8'], data: { 'R': [], 'G': [], 'B': [] }, writeBusy: false, writeValue: null },
+    quaternion: { uuid: '19b10000-7001-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Float32', 'Float32', 'Float32', 'Float32'], data: { 'x': [], 'y': [], 'z': [], 'w': [] }, writeBusy: false, writeValue: null },
+    gas: { uuid: '19b10000-9003-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Uint32'], data: { 'gas': [] } }
+    }
+
+    const sensors = Object.keys(NiclaSenseME);
+    const SERVICE_UUID = '19b10000-0000-537e-4f6c-d104768a1214';
+    var bytesReceived = 0;
+    var bytesPrevious = 0;
+
+    // UI elements
+    const pairButton = document.getElementById('pairButton');
+    const BLEstatus = document.getElementById('bluetooth');
+
+    // --- 3D KALIBRÁCIÓS VÁLTOZÓK ÉS ESEMÉNY ---
+    const reset3dButton = document.getElementById('reset3dButton');
+    var calibrationOffset = new THREE.Quaternion(0, 0, 0, 1);
+    var doCalibrate = false;
+
+    reset3dButton.addEventListener('click', function() {
+    doCalibrate = true;
+    snack('3D Calibration set!', 0);
+    });
+
+    if ("bluetooth" in navigator) {
+    pairButton.addEventListener('click', function (event) { connect(); });
+    } else {
+    msg("browser not supported");
+    snack("Error: This browser doesn't support Web Bluetooth. Try using Chrome.", 1);
+    }
+
+    function msg(m) { BLEstatus.innerHTML = m; }
+
+    function snack(m, warningLevel) {
+    snackBar = document.getElementById("snackbar");
+    snackBar.style.visibility = "visible";
+    snackBar.className = "show";
+    var warnEmoji = warningLevel ? '☝️  ' : '✅  ';
+    setTimeout(function () { snackBar.className = snackBar.className.replace("show", ""); }, 1500);
+    snackBar.innerHTML = warnEmoji + m + ' <span onClick=hideSnack() style="cursor:pointer; margin-left: 15px"> ✖ </span> ';
+    }
+
+    function hideSnack() {
+    snackBar = document.getElementById("snackbar");
+    snackBar.style.visibility = "hidden";
+    }
+
+    async function connect() {
+    pairButton.style.backgroundColor = "grey";
+    pairButton.style.color = 'black';
+    pairButton.innerHTML = "PAIRING";
+    msg('requesting device ...');
+
+    try {
+    const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
+    msg('connecting to device ...');
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+    const server = await device.gatt.connect();
+
+    msg('getting primary service ...');
+    const service = await server.getPrimaryService(SERVICE_UUID);
+
+    for (const sensor of sensors) {
+    msg('characteristic ' + sensor + "...");
+    NiclaSenseME[sensor].characteristic = await service.getCharacteristic(NiclaSenseME[sensor].uuid);
+    if (NiclaSenseME[sensor].properties.includes("BLENotify")) {
+    NiclaSenseME[sensor].characteristic.addEventListener('characteristicvaluechanged', function (event) { handleIncoming(NiclaSenseME[sensor], event.target.value); });
+    await NiclaSenseME[sensor].characteristic.startNotifications();
+    }
+    if (NiclaSenseME[sensor].properties.includes("BLERead")) {
+    NiclaSenseME[sensor].polling = setInterval(function () {
+    NiclaSenseME[sensor].characteristic.readValue().then(function (data) { handleIncoming(NiclaSenseME[sensor], data); })
+    }, 500);
+    }
+    NiclaSenseME[sensor].rendered = false;
+    }
+    pairButton.style.backgroundColor = 'green';
+    pairButton.style.color = 'white';
+    pairButton.innerHTML = "PAIRED";
+    msg('Connected! Swipe right for graphs ->');
+    snack('Connected.', 0);
+
+    initColorPicker();
+    } catch(err) {
+    msg('Connection failed');
+    pairButton.style.backgroundColor = "#d8f41d";
+    pairButton.innerHTML = "CONNECT";
+    }
+    }
+
+    function handleIncoming(sensor, dataReceived) {
+    const columns = Object.keys(sensor.data);
+    const typeMap = {
+    "Uint8": { fn: DataView.prototype.getUint8, bytes: 1 },
+    "Uint16": { fn: DataView.prototype.getUint16, bytes: 2 },
+    "Uint32": { fn: DataView.prototype.getUint32, bytes: 4 },
+    "Int16": { fn: DataView.prototype.getInt16, bytes: 2 },
+    "Float32": { fn: DataView.prototype.getFloat32, bytes: 4 }
+    };
+    var packetPointer = 0, i = 0;
+
+    sensor.structure.forEach(function (dataType) {
+    var dataViewFn = typeMap[dataType].fn.bind(dataReceived);
+    var unpackedValue = dataViewFn(packetPointer, true);
+    sensor.data[columns[i]].push(unpackedValue);
+    if (sensor.data[columns[i]].length > maxRecords) { sensor.data[columns[i]].shift(); }
+    packetPointer += typeMap[dataType].bytes;
+    bytesReceived += typeMap[dataType].bytes;
+    i++;
+    });
+    sensor.rendered = false;
+    }
+
+    function onDisconnected(event) {
+    let device = event.target;
+    pairButton.style.backgroundColor = "red";
+    pairButton.innerHTML = "CONNECT";
+
+    for (const sensor of sensors) {
+    if (typeof NiclaSenseME[sensor].polling !== 'undefined') { clearInterval(NiclaSenseME[sensor].polling); }
+    }
+
+    const colorPickerElement = document.getElementById("color-picker-container");
+    if(colorPickerElement.firstChild) colorPickerElement.removeChild(colorPickerElement.firstChild);
+
+    snack('Device ' + device.name + ' has been disconnected.', 1);
+    msg("Disconnected");
+
+    if(ledLight && ledMaterial) {
+    ledLight.color.setRGB(255,0,0);
+    ledMaterial.color.setRGB(255,0,0);
+    }
+    }
+
+    function BLEwriteTo(sensor) {
+    if (NiclaSenseME[sensor].writeBusy) return;
+    NiclaSenseME[sensor].writeBusy = true;
+    NiclaSenseME[sensor].characteristic.writeValue(NiclaSenseME[sensor].writeValue)
+    .then(_ => { NiclaSenseME[sensor].writeBusy = false; })
+    .catch(error => { console.log(error); });
+    }
+
+</script>
+
+<script>
+
+    function initColorPicker() {
+    var rgb_values = Uint8Array.of(0, 0, 255);
+    NiclaSenseME['led'].writeValue = rgb_values;
+    BLEwriteTo('led');
+
+    if(typeof ledMaterial !== 'undefined' && typeof ledLight !== 'undefined') {
+    ledMaterial.color.setRGB(0,0,255);
+    ledLight.color.setRGB(0,0,255);
+    }
+
+    // --- IRO.JS RGB SÁVOK (Sliders) ---
+    NiclaSenseME.led.colorPicker = new iro.ColorPicker("#color-picker-container", {
+    width: 250,
+    color: "rgb(0, 0, 255)",
+    borderWidth: 1,
+    borderColor: "#fff",
+    layout: [
+    {
+    component: iro.ui.Slider,
+    options: { sliderType: 'red' }
+    },
+    {
+    component: iro.ui.Slider,
+    options: { sliderType: 'green' }
+    },
+    {
+    component: iro.ui.Slider,
+    options: { sliderType: 'blue' }
+    }
+    ]
+    });
+
+    NiclaSenseME.led.colorPicker.on('color:change', updateModelLed);
+    function updateModelLed(color) {
+    if(typeof ledMaterial !== 'undefined' && typeof ledLight !== 'undefined') {
+    ledLight.color.setHex("0x" + color.hexString.substring(1, 7));
+    ledMaterial.color.set(color.hexString);
+    }
+    var rgb_values = Uint8Array.of(color.rgb.r, color.rgb.g, color.rgb.b);
+    NiclaSenseME['led'].writeValue = rgb_values;
+    BLEwriteTo('led');
+    }
+    }
+
+    const colors = ["#FF355E", "#FD5B20", "#FF6037", "#FF9966", "#FF9933", "#FFCC33", "#FFFF66", "#FFFF66", "#CCFF00", "#66FF66", "#AAF0D1", "#50BFE6", "#FF6EFF", "#EE34D2", "#FF00CC", "#FF00CC"];
+    var colorIndex = 0;
+
+    function initGraph(sensor) {
+    var title = sensor;
+    var series = Object.keys(NiclaSenseME[sensor].data);
+    var format = [];
+    series.forEach(function (item) {
+    colorIndex++;
+    if (colorIndex > colors.length) { colorIndex = 0; }
+    format.push({
+    y: [], name: item, mode: 'lines', width: 1, line: { width: 1.5, color: colors[colorIndex] }
+    });
+    });
+
+    Plotly.plot(title, format, {
+    plot_bgcolor: '#111111', paper_bgcolor: '#111111',
+    margin: { l: 20, r: 15, b: 20, t: 15 },
+    showlegend: false, yaxis: { 'showticklabels': true, tickfont:{color:'#888'} },
+    xaxis: { 'range': [0, maxRecords], 'showticklabels': false, 'autorange': false, 'showgrid': true, 'zeroline': true, tickfont: { size: 8 } }
+    });
+    }
+
+    // 3d model variables
+    var renderer = new THREE.WebGLRenderer();
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(75, 1, 1, 10000);
+    var arduinoModel, ledMaterial, ledObject, ledLight;
+
+    function init3D() {
+    var container = document.getElementById('3d');
+    var loader = new THREE.GLTFLoader();
+    var canvasDigits = document.getElementById('canvasDigits');
+    scene.background = new THREE.Color(0x58585A);
+
+    // A Canvas felbontása (illeszkedve az 500x500 dobozhoz)
+    renderer.setSize(420, 420);
+    renderer.setPixelRatio(4);
+
+    container.insertBefore(renderer.domElement, canvasDigits);
+    renderer.domElement.style.margin = "0px auto";
+    renderer.domElement.style.display = "block";
+
+    loader.load('models/niclaSenseME.glb', function (gltf) {
+    arduinoModel = gltf.scene;
+    scene.add(arduinoModel);
+
+    var geometry = new THREE.BoxGeometry(1, 1, 1);
+    ledMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
+    ledObject = new THREE.Mesh(geometry, ledMaterial);
+    ledObject.position.set(9, -10, -1);
+
+    ledLight = new THREE.PointLight(0x111111, 3, 40);
+    ledLight.color.setRGB(0,255,0);
+    ledLight.position.set(9, -10, -1.2);
+    ledMaterial.color.setRGB(0,255,0);
+
+    arduinoModel.add(ledObject);
+    arduinoModel.add(ledLight);
+    arduinoModel.rotation.x = 90 * (Math.PI/180);
+
+    const light = new THREE.DirectionalLight(0xFFFFFF, 1);
+    light.position.set(-20, 100, -10);
+    light.target.position.set(0, 0, 0);
+    scene.add(light);
+    scene.add(light.target);
+    var hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
+    scene.add(hemiLight);
+
+    camera.position.set(0, 25, 0);
+    camera.rotation.y = Math.PI;
+    camera.lookAt(new THREE.Vector3(0, 0, 0));
+    renderer.render(scene, camera);
+    });
+    }
+
+    Array.prototype.latest = function () { return this[this.length - 1]; };
+
+    function graph(sensor) {
+    var labels = Object.keys(NiclaSenseME[sensor].data);
+    var values = [];
+    labels.forEach(function (label) { values.push(NiclaSenseME[sensor].data[label]); });
+    Plotly.restyle(sensor, { y: values });
+    }
+
+    function digit(sensor) {
+    const value = NiclaSenseME[sensor].data[sensor].latest();
+    const div = document.getElementById(sensor + "-value");
+    if (!Number.isNaN(value) && value !== undefined) { div.innerHTML = Math.round(value * 10) / 10; };
+    }
+
+    function update3d(sensor) {
+    var raw_x = NiclaSenseME['quaternion'].data.x.latest();
+    var raw_y = NiclaSenseME['quaternion'].data.y.latest();
+    var raw_z = NiclaSenseME['quaternion'].data.z.latest();
+    var raw_w = NiclaSenseME['quaternion'].data.w.latest();
+
+    if (raw_x === undefined) return;
+
+    // --- TENGELYBEÁLLÍTÁS ---
+    var x = raw_y;
+    var y = raw_x;
+    var z = -raw_z;
+    var w = raw_w;
+
+    const currentSensorQuat = new THREE.Quaternion(x, y, z, w);
+    currentSensorQuat.normalize();
+
+    if (doCalibrate) {
+    calibrationOffset.copy(currentSensorQuat).inverse();
+    doCalibrate = false;
+    }
+
+    const finalQuat = currentSensorQuat.clone().premultiply(calibrationOffset);
+
+    if(typeof arduinoModel !== 'undefined'){
+    arduinoModel.setRotationFromQuaternion(finalQuat);
+    renderer.render(scene, camera);
+    }
+
+    var rotation = new THREE.Euler().setFromQuaternion(finalQuat, 'XYZ');
+    document.getElementById('xQuaternion').innerHTML = "x: " + Math.round(rotation.x * 180 / Math.PI + 180);
+    document.getElementById('yQuaternion').innerHTML = "y: " + Math.round(rotation.y * 180 / Math.PI + 180);
+    document.getElementById('zQuaternion').innerHTML = "z: " + Math.round(rotation.z * 180 / Math.PI + 180);
+    }
+
+    var skip_frame = false;
+    function draw() {
+    function updateViz(sensor, fns) {
+    if (NiclaSenseME[sensor].rendered == false) {
+    fns.forEach(function (fn) { fn(sensor); });
+    NiclaSenseME[sensor].rendered = true;
+    }
+    }
+    if (skip_frame == false) {
+    updateViz('accelerometer', [graph]);
+    updateViz('magnetometer', [graph]);
+    updateViz('temperature', [digit, graph]);
+    updateViz('humidity', [digit, graph]);
+    updateViz('pressure', [digit, graph]);
+    updateViz('gas', [digit, graph]);
+    updateViz('quaternion', [update3d]);
+
+    skip_frame = true;
+    } else { skip_frame = false; }
+    requestAnimationFrame(draw);
+    }
+
+    // INDÍTÁS
+    initGraph('magnetometer');
+    initGraph('accelerometer');
+    initGraph('temperature');
+    initGraph('humidity');
+    initGraph('pressure');
+    initGraph('gas');
+
+    init3D();
+
+    requestAnimationFrame(draw);
+
+</script>
+</html>
