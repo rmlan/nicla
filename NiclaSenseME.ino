@@ -68,6 +68,7 @@ void setup(){
   pressure.begin();
   gyroscope.begin();
   accelerometer.begin();
+  accelerometer.setRange(8);
   quaternion.begin();
   bsec.begin();
   gas.begin();
@@ -152,9 +153,9 @@ void loop(){
 
     if (accelerometerCharacteristic.subscribed()){
       float x, y, z;
-      x = accelerometer.x();
-      y = accelerometer.y();
-      z = accelerometer.z();
+      x = accelerometer.x() / 4096.0f;
+      y = accelerometer.y() / 4096.0f;
+      z = accelerometer.z() / 4096.0f;
 
       float accelerometerValues[] = {x, y, z};
       accelerometerCharacteristic.writeValue(accelerometerValues, sizeof(accelerometerValues));

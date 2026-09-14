@@ -138,6 +138,17 @@
             font-weight: bold;
         }
 
+        #accelerometer-vector {
+            width: 100%;
+            height: 200px;
+            position: relative;
+        }
+
+        #accelerometer-vector canvas {
+            display: block;
+            margin: auto;
+        }
+
         .status {
             width: 1310px;
             height: 60px;
@@ -172,6 +183,22 @@
             color: #888888;
             float: right;
         }
+
+        .value-unit {
+            margin-left: auto;
+            font-size: 20px;
+            color: #888888;
+            white-space: nowrap;
+        }
+
+        .sensor-label {
+            height: 25px;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            font-size: 20px;
+        }
+        
 
         .doublegraph {
             width: 100%;
@@ -330,17 +357,32 @@
                 </div>
 
                 <div class="double widget">
-                    <div class="label">&#127777; Temperature - <span id="temperature-value" class="digit"></span><span class="digit">&deg;C&nbsp;</span></div>
+                    <div class="sensor-label">
+                        &#127777; Temperature
+                        <span class="value-unit">
+                            <span id="temperature-value">-</span>&nbsp;&deg;C
+                        </span>
+                    </div>
                     <div class="doublegraph" id="temperature"></div>
                 </div>
 
                 <div class="double widget">
-                    <div class="label">&#128167; Humidity - <span id="humidity-value" class="digit"></span><span class="digit">%&nbsp;</span></div>
+                    <div class="sensor-label">
+                        &#128167; Humidity
+                        <span class="value-unit">
+                            <span id="humidity-value">-</span>&nbsp;%
+                        </span>
+                    </div>
                     <div class="doublegraph" id="humidity"></div>
                 </div>
 
                 <div class="double widget">
-                    <div class="label">&#9925; Pressure - <span id="pressure-value" class="digit"></span><span class="digit">kPa&nbsp;</span></div>
+                    <div class="sensor-label">
+                    &#9925; Pressure
+                        <span class="value-unit">
+                            <span id="pressure-value">-</span>&nbsp;Pa
+                        </span>
+                    </div>
                     <div class="doublegraph" id="pressure"></div>
                 </div>
 
@@ -382,7 +424,7 @@
     swiper.scrollTo({ left: window.innerWidth, behavior: 'smooth' });
     });
 
-    var maxRecords = 64;
+    var maxRecords = 1000;
 
     var NiclaSenseME =
     {
@@ -585,22 +627,78 @@
     var colorIndex = 0;
 
     function initGraph(sensor) {
+
     var title = sensor;
     var series = Object.keys(NiclaSenseME[sensor].data);
     var format = [];
+
     series.forEach(function (item) {
+
     colorIndex++;
-    if (colorIndex > colors.length) { colorIndex = 0; }
+
+            if (colorIndex >= colors.length) {
+                colorIndex = 0;
+            }
+
+            var color = colors[colorIndex];
+
+            // Actual sensor data
     format.push({
-    y: [], name: item, mode: 'lines', width: 1, line: { width: 1.5, color: colors[colorIndex] }
+                y: [],
+                name: item,
+                mode: 'lines',
+                width: 1,
+                line: {
+                    width: 1.5,
+                    color: color
+                }
+            });
+
+            // Average line
+            format.push({
+                y: [],
+                name: item + ' average',
+                mode: 'lines',
+                line: {
+                    width: 1.5,
+                    color: color,
+                    dash: 'dash'
+                },
+                hoverinfo: 'skip'
     });
     });
 
     Plotly.plot(title, format, {
-    plot_bgcolor: '#111111', paper_bgcolor: '#111111',
-    margin: { l: 20, r: 15, b: 20, t: 15 },
-    showlegend: false, yaxis: { 'showticklabels': true, tickfont:{color:'#888'} },
-    xaxis: { 'range': [0, maxRecords], 'showticklabels': false, 'autorange': false, 'showgrid': true, 'zeroline': true, tickfont: { size: 8 } }
+
+            plot_bgcolor: '#111111',
+            paper_bgcolor: '#111111',
+
+            margin: {
+                l: 20,
+                r: 15,
+                b: 20,
+                t: 15
+            },
+
+            showlegend: false,
+
+            yaxis: {
+                showticklabels: true,
+                tickfont: {
+                    color: '#888'
+                }
+            },
+                
+            xaxis: {
+                range: [0, 100],
+                showticklabels: false,
+                autorange: false,
+                showgrid: true,
+                zeroline: true,
+                tickfont: {
+                    size: 8
+                }
+            }
     });
     }
 
@@ -659,11 +757,392 @@
 
     Array.prototype.latest = function () { return this[this.length - 1]; };
 
+// =====================================================
+// ACCELERATION VECTOR VISUALIZATION
+// =====================================================
+
+    var accelerationRenderer;
+    var accelerationScene;
+    var accelerationCamera;
+
+    var totalAccelerationArrow;
+
+    var xAccelerationArrow;
+    var yAccelerationArrow;
+    var zAccelerationArrow;
+
+    var xAccelerationLabel;
+    var yAccelerationLabel;
+    var zAccelerationLabel;
+
+    function initAccelerationVector() {
+
+        const container = document.getElementById('accelerometer-vector');
+
+        // Scene
+        accelerationScene = new THREE.Scene();
+        accelerationScene.background = new THREE.Color(0x111111);
+
+        // Camera
+        accelerationCamera = new THREE.PerspectiveCamera(
+            50,
+            container.clientWidth / container.clientHeight,
+            0.1,
+            100
+        );
+
+        accelerationCamera.position.set(4, 4, 5);
+        accelerationCamera.lookAt(0, 0, 0);
+
+        // Renderer
+        accelerationRenderer = new THREE.WebGLRenderer({
+            antialias: true
+        });
+
+        accelerationRenderer.setSize(
+            container.clientWidth,
+            container.clientHeight
+        );
+
+        accelerationRenderer.setPixelRatio(window.devicePixelRatio);
+
+        container.appendChild(accelerationRenderer.domElement);
+
+        // -------------------------------------------------
+        // Coordinate axes
+        // -------------------------------------------------
+        /*
+        const axisLength = 1.5;
+
+        const xAxis = new THREE.ArrowHelper(
+            new THREE.Vector3(1, 0, 0),
+            new THREE.Vector3(0, 0, 0),
+            axisLength,
+            0xff0000,
+            0.15,
+            0.08
+        );
+
+        const yAxis = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 1, 0),
+            new THREE.Vector3(0, 0, 0),
+            axisLength,
+            0x00ff00,
+            0.15,
+            0.08
+        );
+
+        const zAxis = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, 1),
+            new THREE.Vector3(0, 0, 0),
+            axisLength,
+            0x0088ff,
+            0.15,
+            0.08
+        );
+
+
+        accelerationScene.add(xAxis);
+        accelerationScene.add(yAxis);
+        accelerationScene.add(zAxis);
+        */
+        // -------------------------------------------------
+        // Total acceleration arrow
+        // -------------------------------------------------
+
+        totalAccelerationArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, 1),
+            new THREE.Vector3(0, 0, 0),
+            1,
+            0xffffff,
+            0.2,
+            0.12
+        );
+
+        accelerationScene.add(totalAccelerationArrow);
+
+        // -------------------------------------------------
+        // Individual X/Y/Z acceleration arrows
+        // -------------------------------------------------
+
+        xAccelerationArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(1, 0, 0),
+            new THREE.Vector3(0, 0, 0),
+            0.5,
+            0xff5555,
+            0.12,
+            0.07
+        );
+
+        yAccelerationArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 1, 0),
+            new THREE.Vector3(0, 0, 0),
+            0.5,
+            0x55ff55,
+            0.12,
+            0.07
+        );
+
+        zAccelerationArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, 1),
+            new THREE.Vector3(0, 0, 0),
+            0.5,
+            0x5599ff,
+            0.12,
+            0.07
+        );
+
+        accelerationScene.add(xAccelerationArrow);
+        accelerationScene.add(yAccelerationArrow);
+        accelerationScene.add(zAccelerationArrow);
+
+        xAccelerationLabel = createTextSprite("X", "#ff5555");
+        yAccelerationLabel = createTextSprite("Y", "#55ff55");
+        zAccelerationLabel = createTextSprite("Z", "#5599ff");
+
+        accelerationScene.add(xAccelerationLabel);
+        accelerationScene.add(yAccelerationLabel);
+        accelerationScene.add(zAccelerationLabel);
+
+        // -------------------------------------------------
+        // Lighting
+        // -------------------------------------------------
+
+        const light = new THREE.HemisphereLight(
+            0xffffff,
+            0x444444,
+            1
+        );
+
+        accelerationScene.add(light);
+
+        // Initial render
+        accelerationRenderer.render(
+            accelerationScene,
+            accelerationCamera
+        );
+    }
+
+    function createTextSprite(text, color) {
+        var canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 64;
+
+        var context = canvas.getContext('2d');
+
+        context.font = 'bold 32px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+
+        context.fillStyle = color;
+        context.fillText(text, 64, 32);
+
+        var texture = new THREE.CanvasTexture(canvas);
+
+        var material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true
+        });
+
+        var sprite = new THREE.Sprite(material);
+
+        sprite.scale.set(0.45, 0.225, 1);
+
+        return sprite;
+    }
+
+
+
+
+
+
+    function updateAccelerationVector() {
+
+        const Ax = NiclaSenseME.accelerometer.data.Ax.latest();
+        const Ay = NiclaSenseME.accelerometer.data.Ay.latest();
+        const Az = NiclaSenseME.accelerometer.data.Az.latest();
+
+        // Don't do anything until we have valid data
+        if (
+            Ax === undefined ||
+            Ay === undefined ||
+            Az === undefined
+        ) {
+            return;
+        }
+
+        // Create acceleration vector
+        const acceleration = new THREE.Vector3(
+            Ax,
+            Ay,
+            Az
+        );
+
+        // Calculate magnitude
+        const magnitude = acceleration.length();
+
+        // Normalize to get direction
+        const direction = acceleration.clone().normalize();
+
+        // Limit visual length so very large acceleration
+        // doesn't leave the widget
+        const visualLength = Math.min(magnitude*1.5, 2.0);
+
+        // -------------------------------------------------
+        // Update individual component arrows
+        // -------------------------------------------------
+
+        const componentScale = 1.5;
+
+        xAccelerationArrow.setLength(
+            Math.abs(Ax) * componentScale,
+            0.12,
+            0.07
+        );
+
+        yAccelerationArrow.setLength(
+            Math.abs(Ay) * componentScale,
+            0.12,
+            0.07
+        );
+
+        zAccelerationArrow.setLength(
+            Math.abs(Az) * componentScale,
+            0.12,
+            0.07
+        );
+
+        // Reverse arrow direction for negative values
+
+        xAccelerationArrow.setDirection(
+            new THREE.Vector3(
+                Ax >= 0 ? 1 : -1,
+                0,
+                0
+            )
+        );
+
+        yAccelerationArrow.setDirection(
+            new THREE.Vector3(
+                0,
+                Ay >= 0 ? 1 : -1,
+                0
+            )
+        );
+
+        zAccelerationArrow.setDirection(
+            new THREE.Vector3(
+                0,
+                0,
+                Az >= 0 ? 1 : -1
+            )
+        );
+
+        // Update arrow
+        totalAccelerationArrow.setDirection(direction);
+
+        totalAccelerationArrow.setLength(
+            visualLength,
+            0.2,
+            0.12
+        );
+
+        // Display magnitude
+        const valueElement =
+            document.getElementById('acceleration-value');
+
+        valueElement.innerHTML =
+            Math.round(magnitude * 100) / 100 + " G";
+
+        // Render
+        accelerationRenderer.render(
+            accelerationScene,
+            accelerationCamera
+        );
+    }
+
+
+
+
+
+
+
     function graph(sensor) {
+
     var labels = Object.keys(NiclaSenseME[sensor].data);
-    var values = [];
-    labels.forEach(function (label) { values.push(NiclaSenseME[sensor].data[label]); });
-    Plotly.restyle(sensor, { y: values });
+        var plotValues = [];
+
+        // Number of samples currently stored
+        var recordCount = 0;
+
+        if (labels.length > 0) {
+            recordCount = NiclaSenseME[sensor].data[labels[0]].length;
+        }
+
+        labels.forEach(function (label) {
+
+            var data = NiclaSenseME[sensor].data[label];
+
+            // -------------------------------------------------
+            // Actual data
+            // -------------------------------------------------
+
+            plotValues.push(data);
+
+            // -------------------------------------------------
+            // Average of the last 1000 samples
+            // -------------------------------------------------
+
+            var recent = data.slice(-1000);
+
+            var average = null;
+
+            if (recent.length > 0) {
+
+            
+            
+                var sum = recent.reduce(
+                    function (accumulator, value) {
+                        return accumulator + value;
+                    },
+                    0
+                );
+
+                average = sum / recent.length;
+            }
+
+            // -------------------------------------------------
+            // Horizontal dashed average line
+            // -------------------------------------------------
+
+            if (average !== null) {
+
+                plotValues.push(
+                    new Array(data.length).fill(average)
+                );
+
+            } else {
+
+                plotValues.push([]);
+            }
+        });
+
+        // Update actual data + average traces
+        Plotly.restyle(sensor, {
+            y: plotValues
+        });
+
+        // -----------------------------------------------------
+        // Show the latest 100 samples
+        // -----------------------------------------------------
+
+        var startIndex = Math.max(0, recordCount - 100);
+
+        var endIndex = Math.max(1, recordCount);
+
+        Plotly.relayout(sensor, {
+            'xaxis.range': [startIndex, endIndex]
+        });
     }
 
     function digit(sensor) {
@@ -716,7 +1195,7 @@
     }
     }
     if (skip_frame == false) {
-    updateViz('accelerometer', [graph]);
+        updateViz('accelerometer', [updateAccelerationVector]);
     updateViz('magnetometer', [graph]);
     updateViz('temperature', [digit, graph]);
     updateViz('humidity', [digit, graph]);
@@ -725,13 +1204,17 @@
     updateViz('quaternion', [update3d]);
 
     skip_frame = true;
-    } else { skip_frame = false; }
+    } else { 
+        skip_frame = false; 
+    }
+    
     requestAnimationFrame(draw);
     }
 
     // INDÍTÁS
     initGraph('magnetometer');
-    initGraph('accelerometer');
+    //initGraph('accelerometer');
+    initAccelerationVector();
     initGraph('temperature');
     initGraph('humidity');
     initGraph('pressure');
