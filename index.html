@@ -347,12 +347,18 @@
             <div class="inner-container">
 
                 <div class="double widget">
-                    <div class="label">&#128640; Accelerometer</div>
+                    <div class="sensor-label">
+                        &#128640; Acceleration
+                        <span class="value-unit">
+                            <span id="acceleration-value">-</span>&nbsp;G
+                        </span>
+                    </div>
+
                     <div id="accelerometer-vector"></div>
                 </div>
 
                 <div class="double widget">
-                    <div class="label">&#129517; Magnetometer</div>
+                    <div class="sensor-label">&#129517; Magnetometer</div>
                     <div id="magnetometer" class="doublegraph"></div>
                 </div>
 
@@ -570,9 +576,13 @@
     function BLEwriteTo(sensor) {
     if (NiclaSenseME[sensor].writeBusy) return;
     NiclaSenseME[sensor].writeBusy = true;
-    NiclaSenseME[sensor].characteristic.writeValue(NiclaSenseME[sensor].writeValue)
-    .then(_ => { NiclaSenseME[sensor].writeBusy = false; })
-    .catch(error => { console.log(error); });
+    NiclaSenseME[sensor].characteristic.writeValueWithResponse(NiclaSenseME[sensor].writeValue)
+    .then(_ => { 
+        NiclaSenseME[sensor].writeBusy = false;
+    })
+    .catch(error => {
+        NiclaSenseME[sensor].writeBusy = false;
+        console.log(error); });
     }
 
 </script>
