@@ -446,7 +446,7 @@
     magnetometer: { uuid: '19b10000-6002-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Float32','Float32','Float32'], data: {'Mx':[], 'My':[], 'Mz':[]} },
     led: { uuid: '19b10000-8001-537e-4f6c-d104768a1214', properties: ['BLEWrite'], structure: ['Uint8', 'Uint8', 'Uint8'], data: { 'R': [], 'G': [], 'B': [] }, writeBusy: false, writeValue: null },
     quaternion: { uuid: '19b10000-7001-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Float32', 'Float32', 'Float32', 'Float32'], data: { 'x': [], 'y': [], 'z': [], 'w': [] }, writeBusy: false, writeValue: null },
-    gas: { uuid: '19b10000-9003-537e-4f6c-d104768a1214', properties: ['BLERead'], structure: ['float32'], data: { 'gas': [] } }
+    gas: { uuid: '19b10000-9003-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Uint32'], data: { 'gas': [] } }
     }
 
     const sensors = Object.keys(NiclaSenseME);
@@ -1066,8 +1066,8 @@
         const valueElement =
             document.getElementById('acceleration-value');
 
-        valueElement.innerHTML =
-            Math.round(magnitude * 100) / 100 + " G";
+        valueElement.textContent  =
+            (Math.round(magnitude * 100) / 100).toFixed(2) + " G";
 
         // Render
         accelerationRenderer.render(
@@ -1091,7 +1091,7 @@
 
         const magnitude = Math.sqrt(Mx * Mx + My * My + Mz * Mz);
         document.getElementById('magnetometer-value').textContent =
-            (Math.round(magnitude * 100) / 100).toString();
+            (Math.round(magnitude * 100) / 100).toFixed(2);
     }
 
 
@@ -1181,7 +1181,7 @@
     function digit(sensor) {
     const value = NiclaSenseME[sensor].data[sensor].latest();
     const div = document.getElementById(sensor + "-value");
-    if (!Number.isNaN(value) && value !== undefined) { div.innerHTML = Math.round(value * 10) / 10; };
+    if (!Number.isNaN(value) && value !== undefined) { div.textContent = Math.round(value * 10) / 10; };
     }
 
     function update3d(sensor) {
@@ -1214,9 +1214,9 @@
     }
 
     var rotation = new THREE.Euler().setFromQuaternion(finalQuat, 'XYZ');
-    document.getElementById('xQuaternion').innerHTML = "x: " + Math.round(rotation.x * 180 / Math.PI + 180);
-    document.getElementById('yQuaternion').innerHTML = "y: " + Math.round(rotation.y * 180 / Math.PI + 180);
-    document.getElementById('zQuaternion').innerHTML = "z: " + Math.round(rotation.z * 180 / Math.PI + 180);
+    document.getElementById('xQuaternion').textContent = "x: " + Math.round(rotation.x * 180 / Math.PI + 180);
+    document.getElementById('yQuaternion').textContent = "y: " + Math.round(rotation.y * 180 / Math.PI + 180);
+    document.getElementById('zQuaternion').textContent = "z: " + Math.round(rotation.z * 180 / Math.PI + 180);
     }
 
     var skip_frame = false;
