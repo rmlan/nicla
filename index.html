@@ -350,7 +350,7 @@
                     <div class="sensor-label">
                         &#128640; Acceleration
                         <span class="value-unit">
-                            <span id="acceleration-value">-</span>&nbsp;G
+                            <span id="acceleration-value">-</span>&nbsp;
                         </span>
                     </div>
 
@@ -358,7 +358,12 @@
                 </div>
 
                 <div class="double widget">
-                    <div class="sensor-label">&#129517; Magnetometer</div>
+                    <div class="sensor-label">
+                        &#129517; Magnetometer
+                        <span class="value-unit">
+                            <span id="magnetometer-value">-</span>&nbsp;&micro;T
+                        </span>
+                    </div>
                     <div id="magnetometer" class="doublegraph"></div>
                 </div>
 
@@ -441,7 +446,7 @@
     magnetometer: { uuid: '19b10000-6002-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Float32','Float32','Float32'], data: {'Mx':[], 'My':[], 'Mz':[]} },
     led: { uuid: '19b10000-8001-537e-4f6c-d104768a1214', properties: ['BLEWrite'], structure: ['Uint8', 'Uint8', 'Uint8'], data: { 'R': [], 'G': [], 'B': [] }, writeBusy: false, writeValue: null },
     quaternion: { uuid: '19b10000-7001-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Float32', 'Float32', 'Float32', 'Float32'], data: { 'x': [], 'y': [], 'z': [], 'w': [] }, writeBusy: false, writeValue: null },
-    gas: { uuid: '19b10000-9003-537e-4f6c-d104768a1214', properties: ['BLENotify'], structure: ['Uint32'], data: { 'gas': [] } }
+    gas: { uuid: '19b10000-9003-537e-4f6c-d104768a1214', properties: ['BLERead'], structure: ['float32'], data: { 'gas': [] } }
     }
 
     const sensors = Object.keys(NiclaSenseME);
@@ -1071,6 +1076,24 @@
         );
     }
 
+    function updateMagnetometer(){
+        const Mx = NiclaSenseME.magnetometer.data.Mx.latest();
+        const My = NiclaSenseME.magnetometer.data.My.latest();
+        const Mz = NiclaSenseME.magnetometer.data.Mz.latest();
+
+        if (
+            !Number.isFinite(Mx) ||
+            !Number.isFinite(My) ||
+            !Number.isFinite(Mz)
+        ) {
+            return;
+        }
+
+        const magnitude = Math.sqrt(Mx * Mx + My * My + Mz * Mz);
+        document.getElementById('magnetometer-value').textContent =
+            (Math.round(magnitude * 100) / 100).toString();
+    }
+
 
 
 
@@ -1206,7 +1229,7 @@
     }
     if (skip_frame == false) {
         updateViz('accelerometer', [updateAccelerationVector]);
-    updateViz('magnetometer', [graph]);
+    updateViz('magnetometer', [updateMagnetometer, graph]);
     updateViz('temperature', [digit, graph]);
     updateViz('humidity', [digit, graph]);
     updateViz('pressure', [digit, graph]);
