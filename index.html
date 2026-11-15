@@ -347,12 +347,23 @@
             <div class="inner-container">
 
                 <div class="double widget">
-                    <div class="label">&#128640; Accelerometer</div>
+                    <div class="sensor-label">
+                        &#128640; Acceleration
+                        <span class="value-unit">
+                            <span id="acceleration-value">-</span>&nbsp;
+                        </span>
+                    </div>
+
                     <div id="accelerometer-vector"></div>
                 </div>
 
                 <div class="double widget">
-                    <div class="label">&#129517; Magnetometer</div>
+                    <div class="sensor-label">
+                        &#129517; Magnetometer
+                        <span class="value-unit">
+                            <span id="magnetometer-value">-</span>&nbsp;&micro;T
+                        </span>
+                    </div>
                     <div id="magnetometer" class="doublegraph"></div>
                 </div>
 
@@ -570,9 +581,13 @@
     function BLEwriteTo(sensor) {
     if (NiclaSenseME[sensor].writeBusy) return;
     NiclaSenseME[sensor].writeBusy = true;
-    NiclaSenseME[sensor].characteristic.writeValue(NiclaSenseME[sensor].writeValue)
-    .then(_ => { NiclaSenseME[sensor].writeBusy = false; })
-    .catch(error => { console.log(error); });
+    NiclaSenseME[sensor].characteristic.writeValueWithResponse(NiclaSenseME[sensor].writeValue)
+    .then(_ => { 
+        NiclaSenseME[sensor].writeBusy = false;
+    })
+    .catch(error => {
+        NiclaSenseME[sensor].writeBusy = false;
+        console.log(error); });
     }
 
 </script>
@@ -1051,14 +1066,32 @@
         const valueElement =
             document.getElementById('acceleration-value');
 
-        valueElement.innerHTML =
-            Math.round(magnitude * 100) / 100 + " G";
+        valueElement.textContent  =
+            (Math.round(magnitude * 100) / 100).toFixed(2) + " G";
 
         // Render
         accelerationRenderer.render(
             accelerationScene,
             accelerationCamera
         );
+    }
+
+    function updateMagnetometer(){
+        const Mx = NiclaSenseME.magnetometer.data.Mx.latest();
+        const My = NiclaSenseME.magnetometer.data.My.latest();
+        const Mz = NiclaSenseME.magnetometer.data.Mz.latest();
+
+        if (
+            !Number.isFinite(Mx) ||
+            !Number.isFinite(My) ||
+            !Number.isFinite(Mz)
+        ) {
+            return;
+        }
+
+        const magnitude = Math.sqrt(Mx * Mx + My * My + Mz * Mz);
+        document.getElementById('magnetometer-value').textContent =
+            (Math.round(magnitude * 100) / 100).toFixed(2);
     }
 
 
@@ -1148,7 +1181,7 @@
     function digit(sensor) {
     const value = NiclaSenseME[sensor].data[sensor].latest();
     const div = document.getElementById(sensor + "-value");
-    if (!Number.isNaN(value) && value !== undefined) { div.innerHTML = Math.round(value * 10) / 10; };
+    if (!Number.isNaN(value) && value !== undefined) { div.textContent = Math.round(value * 10) / 10; };
     }
 
     function update3d(sensor) {
@@ -1181,9 +1214,9 @@
     }
 
     var rotation = new THREE.Euler().setFromQuaternion(finalQuat, 'XYZ');
-    document.getElementById('xQuaternion').innerHTML = "x: " + Math.round(rotation.x * 180 / Math.PI + 180);
-    document.getElementById('yQuaternion').innerHTML = "y: " + Math.round(rotation.y * 180 / Math.PI + 180);
-    document.getElementById('zQuaternion').innerHTML = "z: " + Math.round(rotation.z * 180 / Math.PI + 180);
+    document.getElementById('xQuaternion').textContent = "x: " + Math.round(rotation.x * 180 / Math.PI + 180);
+    document.getElementById('yQuaternion').textContent = "y: " + Math.round(rotation.y * 180 / Math.PI + 180);
+    document.getElementById('zQuaternion').textContent = "z: " + Math.round(rotation.z * 180 / Math.PI + 180);
     }
 
     var skip_frame = false;
@@ -1196,7 +1229,7 @@
     }
     if (skip_frame == false) {
         updateViz('accelerometer', [updateAccelerationVector]);
-    updateViz('magnetometer', [graph]);
+    updateViz('magnetometer', [updateMagnetometer, graph]);
     updateViz('temperature', [digit, graph]);
     updateViz('humidity', [digit, graph]);
     updateViz('pressure', [digit, graph]);
